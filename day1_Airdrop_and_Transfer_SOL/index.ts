@@ -18,7 +18,7 @@ async function main() {
   );
   await connection.confirmTransaction(airdropSol);
 
-  const senderAccBal = await connection.getBalance(senderAccount.publicKey.to);
+  const senderAccBal = await connection.getBalance(senderAccount.publicKey);
   console.log(`Sender Account balance: ${senderAccBal}`);
 
   const transaction = new Transaction().add(
