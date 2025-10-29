@@ -1,0 +1,6 @@
+*/test-ledger/
+test-ledger/
+target/
+node_modules/
+.env
+*.json

@@ -18,8 +18,8 @@ async function main() {
   );
   await connection.confirmTransaction(airdropSol);
 
-  const getSenderAccBal = await connection.getBalance(senderAccount.publicKey);
-  console.log(`Sender Account balance: ${getSenderAccBal}`);
+  const senderAccBal = await connection.getBalance(senderAccount.publicKey.to);
+  console.log(`Sender Account balance: ${senderAccBal}`);
 
   const transaction = new Transaction().add(
     SystemProgram.transfer({
@@ -29,13 +29,20 @@ async function main() {
     })
   );
 
+  console.log("Sending 0.2 SOL to receiver's account....");
   const txnSignature = await sendAndConfirmTransaction(
     connection,
     transaction,
     [senderAccount]
   );
 
-  console.log(`Transaction Complete.... -> ${txnSignature}`);
+  console.log("Transaction Successful....");
+  console.log(`Transaction Signature.... -> ${txnSignature}`);
+
+  // checking balances of both the sender and receiver after the transaction is complete
+  console.log(`Sender's balance: ${senderAccBal}`);
+  const receiverAccBal = await connection.getBalance(receiverAccount.publicKey);
+  console.log(`Receiver's balance: ${receiverAccBal}`);
 }
 
 main();
