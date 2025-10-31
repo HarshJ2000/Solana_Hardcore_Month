@@ -1,3 +1,4 @@
+// Deriving PDA from a publickey
 import { PublicKey } from "@solana/web3.js";
 
 const PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
