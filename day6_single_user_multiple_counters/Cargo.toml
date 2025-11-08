@@ -1,0 +1,6 @@
+[package]
+name = "day6_single_user_multiple_counters"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
