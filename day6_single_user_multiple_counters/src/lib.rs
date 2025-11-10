@@ -157,7 +157,7 @@ pub fn counter_program(
         }
         InstructionType::Reset(id) => {
             let (pda, _bump) =
-                Pubkey::find_program_address(&[b"user", payer.key.as_ref(), &[id]], _program_id);
+                Pubkey::find_program_address(&[b"counter", payer.key.as_ref(), &[id]], _program_id);
 
             if !payer.is_signer {
                 msg!("Not signed by payer!!!!!!!");
