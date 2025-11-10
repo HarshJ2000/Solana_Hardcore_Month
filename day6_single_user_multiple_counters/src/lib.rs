@@ -3,19 +3,24 @@ use solana_program::{
     account_info::{AccountInfo, next_account_info},
     entrypoint,
     entrypoint::ProgramResult,
+    example_mocks::solana_sdk::system_instruction,
     msg,
+    program::invoke_signed,
     pubkey::Pubkey,
+    rent::Rent,
+    sysvar::Sysvar,
 };
 
 #[derive(BorshSerialize, BorshDeserialize)]
 struct Counter {
     owner: Pubkey,
     count: u32,
+    id: u8,
 }
 
 #[derive(BorshSerialize, BorshDeserialize)]
 enum InstructionType {
-    Initialize,
+    Initialize(u8),
     Increment(u32),
     Decrement(u32),
     Reset,
@@ -28,49 +33,59 @@ pub fn counter_program(
     instruction_data: &[u8],
 ) -> ProgramResult {
     let mut accounts_iter = accounts.iter();
-
+    let payer = next_account_info(&mut accounts_iter)?;
     let counter_account = next_account_info(&mut accounts_iter)?;
-    let signer = next_account_info(&mut accounts_iter)?;
+    let sys_program_account = next_account_info(&mut accounts_iter)?;
 
     let instruction_type = InstructionType::try_from_slice(instruction_data)?;
 
-    let mut counter_data = if counter_account.data_len() == 0 {
-        Counter {
-            owner: Pubkey::default(),
-            count: 0,
-        }
-    } else {
-        Counter::try_from_slice(&counter_account.data.borrow())?
-    };
-
     match instruction_type {
-        InstructionType::Initialize => {
-            msg!("Initializing a counter......");
-            counter_data.owner = *signer.key;
-            counter_data.count = 0;
-            msg!("Counter was initialized by owner: {}", counter_data.owner);
-        }
-        InstructionType::Increment(value) => {
-            msg!("Executing Increment.....");
-            counter_data.count += value;
-        }
-        InstructionType::Decrement(value) => {
-            msg!("Executing Decrement......");
-            counter_data.count -= value;
-        }
-        InstructionType::Reset => {
-            msg!("Attempting to reset counter.....");
-            if counter_data.owner != *signer.key {
-                msg!("Unauthorized attempt to reset counter by : {}", signer.key);
-                return Err(solana_program::program_error::ProgramError::IllegalOwner);
-            }
-            counter_data.count = 0;
-            msg!("Counter reset by owner: {}", counter_data.owner);
-        }
-    }
+        InstructionType::Initialize(id) => {
+            msg!("Initializing counter with id : {}", id);
 
-    counter_data.serialize(&mut *counter_account.data.borrow_mut())?;
-    msg!("Counter updated: {}", counter_data.count);
+            let (pda, bump) =
+                Pubkey::find_program_address(&[b"counter", payer.key.as_ref(), &[id]], _program_id);
+
+            if pda != *counter_account.key {
+                msg!("Invalid PDA provided!!!!!");
+                return Err(solana_program::program_error::ProgramError::InvalidSeeds);
+            }
+
+            let rent = Rent::get()?;
+            let space = std::mem::size_of::<Counter>();
+            let lamports = rent.minimum_balance(space);
+
+            invoke_signed(
+                &system_instruction::create_account(
+                    payer.key,
+                    counter_account.key,
+                    lamports,
+                    space as u64,
+                    _program_id,
+                ),
+                &[
+                    payer.clone(),
+                    counter_account.clone(),
+                    sys_program_account.clone(),
+                ],
+                &[&[b"counter", payer.key.as_ref(), &[id], &[bump]]],
+            )?;
+
+            let counter_data = Counter {
+                count: 0,
+                owner: *payer.key,
+                id,
+            };
+
+            counter_data.serialize(&mut &mut counter_account.data.borrow_mut()[..])?;
+
+            msg!("Counter created successfully for User: {}", payer.key);
+        }
+
+        InstructionType::Increment(id) => {}
+        InstructionType::Decrement(id) => {}
+        InstructionType::Reset => {}
+    }
 
     Ok(())
 }
