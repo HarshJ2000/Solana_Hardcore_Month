@@ -24,7 +24,7 @@ enum InstructionType {
     Initialize(u8),
     Increment(u8, u32),
     Decrement(u8, u32),
-    Reset,
+    Reset(u8),
 }
 
 entrypoint!(counter_program);
@@ -113,7 +113,8 @@ pub fn counter_program(
             counter_data.count = new_count;
 
             counter_data.serialize(&mut &mut counter_account.data.borrow_mut()[..])?;
-            msg!("Counter incremented to: {}", counter_data.count);
+            msg!("Incrementing Counter id: {}", id);
+            msg!("Counter: {} incremented to: {}", id, counter_data.count);
         }
         InstructionType::Decrement(id, value) => {
             msg!("Attempting to decrement counter......");
@@ -128,7 +129,7 @@ pub fn counter_program(
 
             if pda != *counter_account.key {
                 msg!("Invalid PDA provided!!!!!!!");
-                return Err(ProgramError::InvalidInstructionData);
+                return Err(ProgramError::InvalidSeeds);
             }
 
             if counter_account.owner != _program_id {
@@ -151,10 +152,41 @@ pub fn counter_program(
             counter_data.count = new_count;
 
             counter_data.serialize(&mut &mut counter_account.data.borrow_mut()[..])?;
-            msg!("Counter decremented to: {}", counter_data.count);
+            msg!("Decrementing Counter id: {}", id);
+            msg!("Counter: {} decremented to: {}", id, counter_data.count);
         }
-        InstructionType::Reset => {}
-    }
+        InstructionType::Reset(id) => {
+            let (pda, _bump) =
+                Pubkey::find_program_address(&[b"user", payer.key.as_ref(), &[id]], _program_id);
 
+            if !payer.is_signer {
+                msg!("Not signed by payer!!!!!!!");
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+
+            if pda != *counter_account.key {
+                msg!("Invalid PDA provided!!!!!!");
+                return Err(ProgramError::InvalidSeeds);
+            }
+
+            if counter_account.owner != _program_id {
+                msg!("Incorrect ProgramId provided!!!!!!!!");
+                return Err(ProgramError::IncorrectProgramId);
+            }
+
+            let mut counter_data = Counter::try_from_slice(&counter_account.data.borrow())?;
+
+            if counter_data.owner != *payer.key {
+                msg!("Unauthorized to execute reset!!!!!!!");
+                return Err(ProgramError::IllegalOwner);
+            }
+
+            counter_data.count = 0;
+
+            msg!("Resetting Counter: {} for owner: {}", id, payer.key);
+            counter_data.serialize(&mut &mut counter_account.data.borrow_mut()[..])?;
+            msg!("Counter: {} resetted by: {}", id, payer.key);
+        }
+    }
     Ok(())
 }
