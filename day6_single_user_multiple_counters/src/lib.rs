@@ -6,6 +6,7 @@ use solana_program::{
     example_mocks::solana_sdk::system_instruction,
     msg,
     program::invoke_signed,
+    program_error::ProgramError,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
@@ -21,8 +22,8 @@ struct Counter {
 #[derive(BorshSerialize, BorshDeserialize)]
 enum InstructionType {
     Initialize(u8),
-    Increment(u32),
-    Decrement(u32),
+    Increment(u8, u32),
+    Decrement(u8, u32),
     Reset,
 }
 
@@ -81,9 +82,40 @@ pub fn counter_program(
 
             msg!("Counter created successfully for User: {}", payer.key);
         }
+        InstructionType::Increment(id, value) => {
+            msg!("Attempting to increment counter......");
 
-        InstructionType::Increment(id) => {}
-        InstructionType::Decrement(id) => {}
+            let (pda, _bump) =
+                Pubkey::find_program_address(&[b"counter", payer.key.as_ref(), &[id]], _program_id);
+
+            if !payer.is_signer {
+                msg!("No payer signatures available!!!!!!");
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+
+            if pda != *counter_account.key {
+                msg!("Invalid PDA provided!!!!!!");
+                return Err(ProgramError::InvalidSeeds);
+            }
+
+            if counter_account.owner != _program_id {
+                msg!("Incorrect ProgramId provided!!!!!!");
+                return Err(ProgramError::IncorrectProgramId);
+            }
+
+            let mut counter_data = Counter::try_from_slice(&counter_account.data.borrow())?;
+
+            let new_count = counter_data
+                .count
+                .checked_add(value)
+                .ok_or(ProgramError::InvalidInstructionData)?;
+
+            counter_data.count = new_count;
+
+            counter_data.serialize(&mut &mut counter_account.data.borrow_mut()[..])?;
+            msg!("Counter incremented to: {}", counter_data.count);
+        }
+        InstructionType::Decrement(id, value) => {}
         InstructionType::Reset => {}
     }
 
