@@ -115,7 +115,44 @@ pub fn counter_program(
             counter_data.serialize(&mut &mut counter_account.data.borrow_mut()[..])?;
             msg!("Counter incremented to: {}", counter_data.count);
         }
-        InstructionType::Decrement(id, value) => {}
+        InstructionType::Decrement(id, value) => {
+            msg!("Attempting to decrement counter......");
+
+            let (pda, _bump) =
+                Pubkey::find_program_address(&[b"counter", payer.key.as_ref(), &[id]], _program_id);
+
+            if !payer.is_signer {
+                msg!("Payer signatures not available!!!!!!!!");
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+
+            if pda != *counter_account.key {
+                msg!("Invalid PDA provided!!!!!!!");
+                return Err(ProgramError::InvalidInstructionData);
+            }
+
+            if counter_account.owner != _program_id {
+                msg!("Incorrect ProgramId provided!!!!!!!!");
+                return Err(ProgramError::IncorrectProgramId);
+            }
+
+            let mut counter_data = Counter::try_from_slice(&counter_account.data.borrow())?;
+
+            if counter_data.owner != *payer.key {
+                msg!("Unauthorized Owner!!!!!!");
+                return Err(ProgramError::IllegalOwner);
+            }
+
+            let new_count = counter_data
+                .count
+                .checked_sub(value)
+                .ok_or(ProgramError::InvalidInstructionData)?;
+
+            counter_data.count = new_count;
+
+            counter_data.serialize(&mut &mut counter_account.data.borrow_mut()[..])?;
+            msg!("Counter decremented to: {}", counter_data.count);
+        }
         InstructionType::Reset => {}
     }
 
