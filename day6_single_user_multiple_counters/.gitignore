@@ -1,5 +1,6 @@
 # Rust build artifacts
 /target/
+/client/node_modules/
 /test-ledger/
 
 # Backup files
