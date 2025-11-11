@@ -1,4 +1,10 @@
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  sendAndConfirmTransaction,
+  Transaction,
+} from "@solana/web3.js";
 import fs from "fs";
 
 const PROGRAM_ID = new PublicKey(
@@ -38,5 +44,18 @@ const [pda] = PublicKey.findProgramAddressSync(
   [Buffer.from("counter"), payer.publicKey.toBuffer(), Uint8Array.of(id)],
   PROGRAM_ID
 );
+
+const instructionData = Buffer.from([2, id]);
+
+const txn = new Transaction().add({
+  keys: [
+    { pubkey: payer.publicKey, isSigner: true, isWritable: false },
+    { pubkey: pda, isSigner: false, isWritable: true },
+  ],
+  programId: PROGRAM_ID,
+  data: instructionData,
+});
+
+await sendAndConfirmTransaction(connection, txn, [payer]);
 
 
