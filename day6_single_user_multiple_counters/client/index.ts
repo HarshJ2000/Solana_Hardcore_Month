@@ -11,7 +11,7 @@ const payer = Keypair.fromSecretKey(
   )
 );
 
-const connection = new Connection("http://127.0.0.1:8899");
+const connection = new Connection("http://127.0.0.1:8899", "confirmed");
 
 class Counter {
   owner!: Uint8Array;
@@ -31,4 +31,12 @@ const counterSchema = new Map([
     },
   ],
 ]);
+
+let id = 1;
+
+const [pda] = PublicKey.findProgramAddressSync(
+  [Buffer.from("counter"), payer.publicKey.toBuffer(), Uint8Array.of(id)],
+  PROGRAM_ID
+);
+
 
