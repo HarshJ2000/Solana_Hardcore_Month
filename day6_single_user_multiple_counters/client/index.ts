@@ -2,7 +2,7 @@ import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import fs from "fs";
 
 const PROGRAM_ID = new PublicKey(
-  "<replace this with the solana program ProgramID>"
+  "<replace this with our solana program's ProgramID>"
 );
 
 const payer = Keypair.fromSecretKey(
@@ -12,3 +12,23 @@ const payer = Keypair.fromSecretKey(
 );
 
 const connection = new Connection("http://127.0.0.1:8899");
+
+class Counter {
+  owner!: Uint8Array;
+  count!: number;
+  id!: number;
+}
+
+const counterSchema = new Map([
+  [
+    Counter,
+    {
+      kind: "struct",
+      fields: [
+        ["count", "u32"],
+        ["owner", [32]],
+      ],
+    },
+  ],
+]);
+
